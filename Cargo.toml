@@ -1,0 +1,48 @@
+[package]
+name = "honk-me"
+# The one place the version lives: VERSION and the User-Agent come from it (CARGO_PKG_VERSION),
+# and the release workflow checks it against the tag.
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Official Rust client for Honk (honk-me.app): send events from apps, jobs and CI to your phone, with retries and idempotency built in."
+license = "MIT"
+authors = ["Honk contributors"]
+repository = "https://github.com/honk-me/honk-rust"
+homepage = "https://honk-me.app"
+documentation = "https://docs.rs/honk-me"
+readme = "README.md"
+keywords = ["honk", "notifications", "push", "alerts", "monitoring"]
+categories = ["api-bindings", "web-programming::http-client"]
+include = ["/src", "/examples", "/Cargo.toml", "/README.md", "/LICENSE", "/CHANGELOG.md"]
+
+[lib]
+name = "honk_me"
+
+[features]
+default = []
+## A synchronous client, `honk_me::blocking::Honk`, for code without an async runtime.
+blocking = ["tokio/rt"]
+
+[dependencies]
+# rustls (no OpenSSL) with the operating system's trust store; HTTP/1.1 with keep-alive.
+reqwest = { version = "0.13", default-features = false, features = ["rustls"] }
+tokio = { version = "1.47", default-features = false, features = ["time"] }
+serde = { version = "1.0.200", features = ["derive"] }
+serde_json = "1.0.120"
+getrandom = "0.4"
+httpdate = "1.0"
+
+[dev-dependencies]
+tokio = { version = "1.47", features = ["macros", "rt-multi-thread", "net", "io-util", "time", "sync"] }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[[example]]
+name = "quickstart"
+
+[[example]]
+name = "blocking"
+required-features = ["blocking"]
