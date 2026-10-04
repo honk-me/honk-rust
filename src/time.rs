@@ -142,10 +142,13 @@ mod tests {
             parse_rfc3339("2026-10-04T12:20:05Z"),
             Some(UNIX_EPOCH + Duration::from_secs(1_791_116_405))
         );
+        // SystemTime is 100 ns on Windows, so the exact check uses a 100 ns multiple; nine
+        // fractional digits must still parse everywhere.
         assert_eq!(
-            parse_rfc3339("2026-10-04T12:20:05.123456789Z").map(|x| x.duration_since(t).unwrap()),
-            Some(Duration::from_nanos(456_789))
+            parse_rfc3339("2026-10-04T12:20:05.1234567Z").map(|x| x.duration_since(t).unwrap()),
+            Some(Duration::from_nanos(456_700))
         );
+        assert!(parse_rfc3339("2026-10-04T12:20:05.123456789Z").is_some());
         for bad in [
             "",
             "2026-10-04",
