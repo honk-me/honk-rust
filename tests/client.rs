@@ -20,6 +20,8 @@ fn every_field() -> Message {
         .occurred_at(UNIX_EPOCH + Duration::from_millis(1_791_116_405_123))
         .url("https://grafana.example.com/d/disk")
         .image_url("https://grafana.example.com/render/disk.png")
+        .action("Runbook", "https://wiki.example.com/runbooks/disk")
+        .action("Call on-call", "tel:+15550134")
         .metadata("host", "db-1")
         .metadata("used", 91)
         .metadata("ratio", 0.91)
@@ -74,6 +76,10 @@ async fn sends_every_field_with_the_openapi_names_and_headers() {
             "occurred_at": "2026-10-04T12:20:05.123Z",
             "url": "https://grafana.example.com/d/disk",
             "image_url": "https://grafana.example.com/render/disk.png",
+            "actions": [
+                { "title": "Runbook", "url": "https://wiki.example.com/runbooks/disk" },
+                { "title": "Call on-call", "url": "tel:+15550134" }
+            ],
             "metadata": { "host": "db-1", "used": 91, "ratio": 0.91, "ok": false },
             "ttl_seconds": 600,
             "source_sequence": 42
@@ -140,6 +146,7 @@ async fn helpers_set_severity_event_type_and_group_key() {
         .unwrap();
     honk.problem("db/backup", "", "again")
         .severity(Severity::BLAST)
+        .action("Call on-call", "tel:+15550134")
         .idempotency_key("p-2")
         .await
         .unwrap();
@@ -166,7 +173,7 @@ async fn helpers_set_severity_event_type_and_group_key() {
     assert_eq!(reqs[1].json()["event_type"], "recovery");
     assert_eq!(
         reqs[2].json(),
-        json!({ "message": "again", "severity": "critical", "group_key": "db/backup", "event_type": "problem" })
+        json!({ "message": "again", "severity": "critical", "group_key": "db/backup", "event_type": "problem", "actions": [{ "title": "Call on-call", "url": "tel:+15550134" }] })
     );
     assert_eq!(reqs[2].header("idempotency-key"), "p-2");
     let severities: Vec<String> = reqs[3..]

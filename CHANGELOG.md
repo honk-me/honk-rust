@@ -4,6 +4,14 @@ All notable changes to the `honk-me` crate are documented here. The format follo
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- `Message::actions` and `Action`: up to 3 buttons (`https://`, `mailto:`, `tel:` or `sms:`),
+  added with `.action(title, url)` on `Message` and on both `PendingSend`s, sent as `actions` and
+  omitted when empty. Validated locally like the server, with errors on `actions`,
+  `actions[i].title` and `actions[i].url`; `MAX_ACTIONS` and `MAX_ACTION_TITLE`.
+
 ## [0.1.0] - 2026-10-04
 
 ### Added

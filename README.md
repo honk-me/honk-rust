@@ -118,6 +118,7 @@ has durably stored the event (`202`); that does not mean a push was delivered.
 | `event_type` | `Option<EventType>` | `Event`, `Problem`, `Recovery` (recovery needs a group key) |
 | `occurred_at` | `Option<SystemTime>` | sent as RFC 3339 |
 | `url`, `image_url` | `Option<String>` | https only, no credentials, ≤ 2048 bytes; no fragment in `image_url` |
+| `actions` | `Vec<Action>` | up to 3 buttons, `.action(title, url)`; see [Actions](#actions) |
 | `metadata` | `BTreeMap<String, MetadataValue>` | ≤ 16 keys `[A-Za-z0-9_.-]{1,64}`; strings (≤ 512), numbers, booleans |
 | `ttl_seconds` | `Option<u32>` | 60–86400 |
 | `source_sequence` | `Option<u64>` | monotonic per source; needs a group key |
@@ -125,6 +126,26 @@ has durably stored the event (`202`); that does not mean a push was delivered.
 `idempotency_key` is your stable key (`"order-42-failed"`, 1–128 printable ASCII characters)
 or `None` for a new UUIDv7. A replay within 24 hours returns the original id with
 `duplicate: true`; the same key with a different payload is `Error::Conflict`.
+
+## Actions
+
+Up to three buttons on a message, in display order (the first is the primary). Honk never opens
+them; the phone does when you tap one: Mail for `mailto:`, the Phone app for `tel:`, Messages for
+`sms:`, Safari for `https://`.
+
+```rust
+honk.light("New quote request", "Emily Carter asked for a quote: 3 rooms, 2 bathrooms")
+    .group_key("requests/4812")
+    .action("Reply", "mailto:emily@example.com?subject=Your%20quote")
+    .action("Call", "tel:+15550134")
+    .await?;
+```
+
+`Message::action` works the same way, and `message.actions` is a plain `Vec<Action>`. A title is
+1–40 characters on one line, shown as sent. A URL is at most 2048 bytes without spaces:
+`https://` (no credentials), `mailto:` with one address and an optional `?subject=…&body=…`,
+`tel:` with a number, or `sms:` with a number and an optional `?body=…`. Anything else (`http:`,
+`javascript:`, app schemes) is `Error::Validation` on `actions[i].url`.
 
 ## Configuration
 

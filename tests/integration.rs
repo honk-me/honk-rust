@@ -1,6 +1,6 @@
 //! Against a real Honk server: runs when HONK_URL and HONK_KEY are set (sdk/scripts/integration.sh
 //! starts a throwaway one), skipped otherwise. The key must not allow urgent priority.
-use honk_me::{Category, Error, EventType, Honk, Message, Priority, Severity};
+use honk_me::{Action, Category, Error, EventType, Honk, Message, Priority, Severity};
 
 fn honk() -> Option<Honk> {
     match (std::env::var("HONK_URL"), std::env::var("HONK_KEY")) {
@@ -53,6 +53,28 @@ async fn integration_every_field_and_duplicate() {
     let again = honk.send(&msg, key.as_str()).await.unwrap();
     assert!(again.duplicate);
     assert_eq!(first.id, again.id);
+}
+
+#[tokio::test]
+async fn integration_actions_and_duplicate() {
+    let Some(honk) = honk() else { return };
+    let key = unique("rust-actions");
+    let mut msg = Message::new("rust: Emily Carter asked for a quote")
+        .title("New quote request")
+        .group_key(unique("rust/requests"))
+        .action("Reply", "mailto:emily@example.com?subject=Your%20quote")
+        .action("Call", "tel:+15550134");
+    let first = honk.send(&msg, key.as_str()).await.unwrap();
+    let again = honk.send(&msg, key.as_str()).await.unwrap();
+    assert!(again.duplicate);
+    assert_eq!(first.id, again.id);
+    // The actions are part of the idempotency payload.
+    msg.actions = vec![Action::new("Reply", "mailto:emily@example.com")];
+    let err = honk.send(&msg, key.as_str()).await.unwrap_err();
+    assert!(
+        matches!(&err, Error::Conflict(f) if f.code == "idempotency_conflict"),
+        "{err:?}"
+    );
 }
 
 #[tokio::test]
@@ -133,6 +155,25 @@ async fn integration_server_validation() {
         .unwrap_err();
     assert!(
         matches!(&err, Error::Validation(f) if !f.local && f.fields.iter().any(|e| e.field == "group_key")),
+        "{err:?}"
+    );
+}
+
+#[tokio::test]
+async fn integration_server_validation_of_actions() {
+    let Some(_) = honk() else { return };
+    let honk = Honk::builder()
+        .url(std::env::var("HONK_URL").unwrap())
+        .key(std::env::var("HONK_KEY").unwrap())
+        .validate(false)
+        .build()
+        .unwrap();
+    let msg = Message::new("rust: invalid action")
+        .action("Call", "tel:+15550134")
+        .action("Open", "javascript:alert(1)");
+    let err = honk.send(&msg, None).await.unwrap_err();
+    assert!(
+        matches!(&err, Error::Validation(f) if !f.local && f.fields.iter().map(|e| (e.field.as_str(), e.code.as_str())).eq([("actions[1].url", "invalid_format")])),
         "{err:?}"
     );
 }

@@ -213,6 +213,12 @@ impl PendingSend<'_> {
         source_sequence: u64;
     }
 
+    /// Adds a button (at most 3, in display order), e.g. `.action("Call", "tel:+15550134")`.
+    pub fn action(mut self, title: impl Into<String>, url: impl Into<String>) -> Self {
+        self.message = self.message.action(title, url);
+        self
+    }
+
     /// Adds one metadata entry (a string, number or boolean).
     pub fn metadata(mut self, key: impl Into<String>, value: impl Into<MetadataValue>) -> Self {
         self.message = self.message.metadata(key, value);

@@ -31,6 +31,7 @@ fn sends_retries_and_maps_errors_without_a_runtime() {
     let a = honk
         .loud("Disk 91% full", "db-1 /var is at 91%")
         .group_key("disk/db-1")
+        .action("Open", "https://grafana.example.com/d/disk")
         .idempotency_key("b-1")
         .send()
         .unwrap();
@@ -45,6 +46,10 @@ fn sends_retries_and_maps_errors_without_a_runtime() {
     assert_eq!(reqs[0].header("idempotency-key"), "b-1");
     assert_eq!(reqs[1].header("idempotency-key"), "b-1");
     assert_eq!(reqs[1].json()["severity"], "warning");
+    assert_eq!(
+        reqs[1].json()["actions"][0]["url"],
+        "https://grafana.example.com/d/disk"
+    );
     assert_eq!(reqs[2].json()["severity"], "critical");
 }
 

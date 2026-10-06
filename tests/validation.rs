@@ -1,5 +1,5 @@
 use honk_me::{
-    Category, Defaults, Error, EventType, Message, MetadataValue, Priority, Severity,
+    Action, Category, Defaults, Error, EventType, Message, MetadataValue, Priority, Severity,
     encode_message,
 };
 
@@ -143,6 +143,220 @@ fn each_rule() {
             "source_sequence".to_owned(),
             "requires_group_key".to_owned()
         )]
+    );
+}
+
+#[test]
+fn each_action_rule() {
+    let action = |title: &str, url: &str| Message::new("m").action(title, url);
+    let cases: Vec<(Message, &str, &str)> = vec![
+        (action("  ", "tel:1"), "actions[0].title", "required"),
+        (
+            action(&"t".repeat(41), "tel:1"),
+            "actions[0].title",
+            "too_long",
+        ),
+        (
+            action("Call\nEmily", "tel:1"),
+            "actions[0].title",
+            "invalid_format",
+        ),
+        (
+            action("Call\u{7}", "tel:1"),
+            "actions[0].title",
+            "invalid_format",
+        ),
+        (action("Open", " "), "actions[0].url", "required"),
+        (
+            action("Open", &format!("https://example.com/{}", "a".repeat(2029))),
+            "actions[0].url",
+            "too_long",
+        ),
+        (
+            action("Open", "http://example.com"),
+            "actions[0].url",
+            "invalid_format",
+        ),
+        (
+            action("Open", "javascript:alert(1)"),
+            "actions[0].url",
+            "invalid_format",
+        ),
+        (
+            action("Open", "shop://orders/42"),
+            "actions[0].url",
+            "invalid_format",
+        ),
+        (
+            action("Open", "https://user:pw@example.com"),
+            "actions[0].url",
+            "invalid_format",
+        ),
+        (
+            action("Open", "https:///orders"),
+            "actions[0].url",
+            "invalid_format",
+        ),
+        (
+            action("Open", "https://@example.com"),
+            "actions[0].url",
+            "invalid_format",
+        ),
+        (
+            action("Reply", "mailto:emily@example.com?subject=Your quote"),
+            "actions[0].url",
+            "invalid_format",
+        ),
+        (
+            action("Reply", "mailto:?subject=Hi"),
+            "actions[0].url",
+            "invalid_format",
+        ),
+        (
+            action("Reply", "mailto:emily@localhost"),
+            "actions[0].url",
+            "invalid_format",
+        ),
+        (
+            action("Reply", "mailto:emily@example.com,bob@example.com"),
+            "actions[0].url",
+            "invalid_format",
+        ),
+        (
+            action("Reply", "mailto:Emily%20%3Cemily@example.com%3E"),
+            "actions[0].url",
+            "invalid_format",
+        ),
+        (
+            action("Reply", "mailto:emily..carter@example.com"),
+            "actions[0].url",
+            "invalid_format",
+        ),
+        (
+            action("Reply", "mailto:emily@example.com?cc=boss@example.com"),
+            "actions[0].url",
+            "invalid_format",
+        ),
+        (
+            action("Reply", "mailto:emily@example.com?subject=100%"),
+            "actions[0].url",
+            "invalid_format",
+        ),
+        (
+            action("Call", "tel:+1\u{a0}5550134"),
+            "actions[0].url",
+            "invalid_format",
+        ),
+        (
+            action("Call", "tel:+1-555-CALL"),
+            "actions[0].url",
+            "invalid_format",
+        ),
+        (action("Call", "tel:+"), "actions[0].url", "invalid_format"),
+        (
+            action("Call", "tel:+15550134?x=1"),
+            "actions[0].url",
+            "invalid_format",
+        ),
+        (
+            action("Text", "sms://+15550134"),
+            "actions[0].url",
+            "invalid_format",
+        ),
+        (
+            action("Text", "sms:+15550134?subject=Hi"),
+            "actions[0].url",
+            "invalid_format",
+        ),
+        (
+            action("Text", "sms:+15550134?body=a;b"),
+            "actions[0].url",
+            "invalid_format",
+        ),
+        (
+            Message::new("m")
+                .action("Call", "tel:1")
+                .action("Open", "ftp://example.com"),
+            "actions[1].url",
+            "invalid_format",
+        ),
+    ];
+    for (m, field, code) in cases {
+        assert_eq!(
+            one(m),
+            (field.to_owned(), code.to_owned()),
+            "{field} {code}"
+        );
+    }
+
+    let mut four = Message::new("m");
+    for _ in 0..4 {
+        four = four.action("Call", "tel:+15550134");
+    }
+    assert_eq!(one(four), ("actions".to_owned(), "too_long".to_owned()));
+
+    let m = Message::new("")
+        .url("ftp://a")
+        .action("", "ftp://b")
+        .action("Call", "tel:1")
+        .ttl_seconds(5);
+    assert_eq!(
+        fields(&m),
+        [
+            ("message", "required"),
+            ("url", "invalid_format"),
+            ("actions[0].title", "required"),
+            ("actions[0].url", "invalid_format"),
+            ("ttl_seconds", "out_of_range"),
+        ]
+        .map(|(f, c)| (f.to_owned(), c.to_owned()))
+    );
+}
+
+#[test]
+fn actions_that_pass_and_their_json() {
+    for url in [
+        "https://shop.example.com/admin/orders/42?tab=notes#latest",
+        "HTTPS://example.com:8443/a",
+        "mailto:emily@example.com",
+        "MailTo:emily@example.com?subject=Your%20quote&body=Hi%20Emily",
+        "mailto:first.last+quotes@example.co.uk?subject=Your+quote",
+        "mailto:emily%40example.com",
+        "mailto:ana@[192.0.2.1]",
+        "tel:+15550134",
+        "tel:+1-555-013.4",
+        "tel:(555)0134",
+        "TEL://+15550134",
+        "sms:+15550134",
+        "SMS:5550134?body=On%20my%20way",
+        "sms:+15550134?",
+        &format!("https://example.com/{}", "a".repeat(2028)),
+    ] {
+        let body = encode_message(
+            &Message::new("x").action("Open", url),
+            &Defaults::new(),
+            true,
+        )
+        .unwrap_or_else(|e| panic!("{url}: {e}"));
+        let json: serde_json::Value = serde_json::from_str(&body).unwrap();
+        assert_eq!(
+            json["actions"],
+            serde_json::json!([{ "title": "Open", "url": url }])
+        );
+    }
+    let titles = Message::new("x")
+        .action("é".repeat(40), "tel:1")
+        .action("  Call Emily Carter  ", "tel:1")
+        .action("Reply ✉️", "mailto:a@b.co");
+    assert_eq!(fields(&titles), vec![]);
+    assert_eq!(
+        titles.actions[1],
+        Action::new("  Call Emily Carter  ", "tel:1")
+    );
+    // No actions: no "actions" key at all.
+    assert_eq!(
+        encode_message(&Message::new("x"), &Defaults::new(), true).unwrap(),
+        r#"{"message":"x"}"#
     );
 }
 

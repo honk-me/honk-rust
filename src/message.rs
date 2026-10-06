@@ -240,6 +240,35 @@ impl From<&String> for MetadataValue {
     }
 }
 
+/// A button on a message. Honk never opens the URL; the phone does, when you tap the button.
+///
+/// ```
+/// use honk_me::{Action, Message};
+///
+/// let msg = Message::new("Emily Carter asked for a quote")
+///     .action("Reply", "mailto:emily@example.com?subject=Your%20quote")
+///     .action("Call", "tel:+15550134");
+/// assert_eq!(msg.actions[1], Action::new("Call", "tel:+15550134"));
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[non_exhaustive]
+pub struct Action {
+    /// 1–40 characters, one line, shown as sent.
+    pub title: String,
+    /// `https://` (no credentials), `mailto:`, `tel:` or `sms:`, at most 2048 bytes.
+    pub url: String,
+}
+
+impl Action {
+    /// A button with this title and URL.
+    pub fn new(title: impl Into<String>, url: impl Into<String>) -> Self {
+        Action {
+            title: title.into(),
+            url: url.into(),
+        }
+    }
+}
+
 /// One event for `POST /v1/messages`. Only the message text is required; unset fields are
 /// omitted so the server defaults apply (severity info, priority normal, source `api`,
 /// environment `default`, channel `general`, event type event, TTL 3600 s). Empty strings
@@ -290,6 +319,8 @@ pub struct Message {
     /// An https image the server fetches after ingestion (no credentials or fragment, at most
     /// 2048 bytes).
     pub image_url: Option<String>,
+    /// Up to 3 buttons, in display order (the first is the primary). Empty: none.
+    pub actions: Vec<Action>,
     /// At most 16 keys matching `[A-Za-z0-9_.-]{1,64}`.
     pub metadata: BTreeMap<String, MetadataValue>,
     /// The push lifetime, 60–86400 seconds. Default 3600.
@@ -377,6 +408,12 @@ impl Message {
     /// Sets an https image the server fetches after ingestion.
     pub fn image_url(mut self, image_url: impl Into<String>) -> Self {
         self.image_url = Some(image_url.into());
+        self
+    }
+
+    /// Adds a button (at most 3, in display order), e.g. `.action("Call", "tel:+15550134")`.
+    pub fn action(mut self, title: impl Into<String>, url: impl Into<String>) -> Self {
+        self.actions.push(Action::new(title, url));
         self
     }
 

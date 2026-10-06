@@ -8,7 +8,7 @@
 //! - Retries only network errors, timeouts, 429 and 5xx, with exponential backoff and full
 //!   jitter, never sooner than `Retry-After`, all under a total deadline (30 s). Redirects are
 //!   reported, never followed.
-//! - Local validation of everything cheap (lengths, https-only URLs, metadata, the 16 KiB body),
+//! - Local validation of everything cheap (lengths, URLs, actions, metadata, the 16 KiB body),
 //!   with every invalid field reported at once. [`HonkBuilder::validate`]`(false)` leaves it to
 //!   the server.
 //!
@@ -71,12 +71,12 @@ mod validate;
 pub use client::{Honk, HonkBuilder, PendingSend, VERSION};
 pub use error::{Error, Failure, FieldError, Result};
 pub use message::{
-    Accepted, Category, Defaults, EventType, Message, MetadataValue, ParseEnumError, Priority,
-    Severity,
+    Accepted, Action, Category, Defaults, EventType, Message, MetadataValue, ParseEnumError,
+    Priority, Severity,
 };
 pub use uuid::new_idempotency_key;
 pub use validate::{
-    MAX_BODY_BYTES, MAX_CHANNEL, MAX_ENVIRONMENT, MAX_GROUP_KEY, MAX_MESSAGE_BYTES,
-    MAX_METADATA_KEYS, MAX_METADATA_STRING, MAX_SOURCE, MAX_TITLE, MAX_TTL_SECONDS, MAX_URL_BYTES,
-    MIN_TTL_SECONDS, encode_message,
+    MAX_ACTION_TITLE, MAX_ACTIONS, MAX_BODY_BYTES, MAX_CHANNEL, MAX_ENVIRONMENT, MAX_GROUP_KEY,
+    MAX_MESSAGE_BYTES, MAX_METADATA_KEYS, MAX_METADATA_STRING, MAX_SOURCE, MAX_TITLE,
+    MAX_TTL_SECONDS, MAX_URL_BYTES, MIN_TTL_SECONDS, encode_message,
 };
