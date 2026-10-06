@@ -2,7 +2,7 @@
 name = "honk-me"
 # The one place the version lives: VERSION and the User-Agent come from it (CARGO_PKG_VERSION),
 # and the release workflow checks it against the tag.
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.85"
 description = "Official Rust client for Honk (honk-me.app): send events from apps, jobs and CI to your phone, with retries and idempotency built in."

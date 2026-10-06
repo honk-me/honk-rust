@@ -201,7 +201,7 @@ match honk.send(&msg, "order-1042-failed").await {
 ## Blocking client
 
 ```rust
-// Cargo.toml: honk-me = { version = "0.1", features = ["blocking"] }
+// Cargo.toml: honk-me = { version = "0.2", features = ["blocking"] }
 use honk_me::blocking::Honk;
 
 let honk = Honk::from_env()?;
